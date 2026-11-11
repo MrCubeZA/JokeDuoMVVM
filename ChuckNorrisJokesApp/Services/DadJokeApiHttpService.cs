@@ -3,6 +3,7 @@ using ChuckNorrisJokesApp.Services.Interfaces;
 
 using System;
 using System.Collections.Generic;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 
@@ -18,7 +19,8 @@ namespace ChuckNorrisJokesApp.Services
             _configurationService = service;
 
             _httpClient = new HttpClient();
-            _httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
+            _httpClient.DefaultRequestHeaders.Accept.Add(
+                new MediaTypeWithQualityHeaderValue("application/json"));
         }
 
         public async Task<string> GetJokeAsync()
