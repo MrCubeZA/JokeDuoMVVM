@@ -1,109 +1,87 @@
-# Joke Duo
+# Joke Duo (Chuck Norris + Dad Jokes App)
 
-A small .NET MAUI app that shows a Chuck Norris joke and a dad joke. The screen uses the MVVM pattern. Jokes come from two public HTTP APIs.
+> **⚠️ For educational purposes only.**
+> This solution builds on the Chuck Norris Jokes starter app to practise .NET MAUI, MVVM and dependency injection. It is not production software and comes with no warranty or support. It is not affiliated with or endorsed by Chuck Norris, [chucknorris.io](https://api.chucknorris.io) or [icanhazdadjoke](https://icanhazdadjoke.com). Jokes are fetched live from those third-party APIs, so content is outside this project's control.
 
-## APIs
+## What it does
 
-### Chuck Norris jokes
+A small cross-platform .NET MAUI app. Tap the button and it fetches a random Chuck Norris joke from `https://api.chucknorris.io/jokes/random` and a random dad joke from `https://icanhazdadjoke.com/`, and displays both with clear labels. A loading indicator shows while the jokes load. If either request fails, an error message is shown for that joke and the other joke stays on screen.
 
-The app sends `GET https://api.chucknorris.io/jokes/random` with no extra headers.
+## API investigation
 
-A successful body looks like this:
+- **Chuck Norris jokes**: `GET https://api.chucknorris.io/jokes/random` with no extra headers. The JSON response has a `value` field containing the joke, which is the field the app shows.
+- **Dad jokes**: `GET https://icanhazdadjoke.com/` with the header `Accept: application/json` (without it the API returns plain text). The JSON response has a `joke` field containing the joke, which is the field the app shows.
 
-```json
-{
-  "categories": [],
-  "created_at": "2020-01-05 13:42:24.40636",
-  "icon_url": "https://api.chucknorris.io/img/avatar/chuck-norris.png",
-  "id": "B1Rz0sqqT3a7sP2I71eXhg",
-  "updated_at": "2020-01-05 13:42:24.40636",
-  "url": "https://api.chucknorris.io/jokes/B1Rz0sqqT3a7sP2I71eXhg",
-  "value": "The joke text is here."
-}
+## Solution layout
+
+```
+ChuckNorrisJokesAppSln.slnx          Solution file
+└── ChuckNorrisJokesApp/             Single MAUI project
+    ├── MauiProgram.cs               App startup and dependency injection registration
+    ├── App.xaml / AppShell.xaml     Application and Shell navigation
+    ├── Models/
+    │   ├── ChuckNorrisJoke.cs       DTO matching the Chuck Norris API's JSON response
+    │   └── DadJoke.cs               DTO matching the dad joke API's JSON response
+    ├── Services/
+    │   ├── Interfaces/              IChuckNorrisApiService, IDadJokeApiService, IConfigurationService, IPopUps
+    │   ├── ChuckNorrisApiHttpService.cs   Calls the Chuck Norris API with HttpClient and deserializes the JSON
+    │   ├── DadJokeApiHttpService.cs       Calls the dad joke API with HttpClient and deserializes the JSON
+    │   ├── ConfigurationService.cs        Holds the API URLs
+    │   └── MauiPopupService.cs            Shows alerts through MAUI
+    ├── ViewModels/
+    │   ├── BaseViewModel.cs         INotifyPropertyChanged helper
+    │   └── JokesViewModel.cs        Exposes both jokes, error messages, loading state and GetJokeCommand
+    ├── Views/
+    │   └── JokesView.xaml(.cs)      UI bound to JokesViewModel
+    ├── Platforms/                   Android, iOS, Mac Catalyst and Windows entry points
+    └── Resources/                   Icons, splash screen, fonts, images, styles
 ```
 
-The joke text is the `value` field. The other fields are on the model so the JSON can be deserialized. The screen shows `value`.
+## Responsibilities
 
-### Dad jokes
+- **View** (`JokesView`): shows the two labelled jokes, the error text, the loading indicator and the button. It only binds to the view model.
+- **ViewModel** (`JokesViewModel`): holds both jokes, an error message for each and the loading flag. `GetJokeCommand` asks both services for new jokes and will not run again while a fetch is in progress.
+- **Models** (`ChuckNorrisJoke`, `DadJoke`): match each API's JSON so the services can deserialize the response.
+- **API services** (`ChuckNorrisApiHttpService`, `DadJokeApiHttpService`): make the HTTP requests and deserialize the JSON, keeping that out of the view model and UI. Unsuccessful HTTP responses and invalid or unexpected data are handled as errors.
 
-The app sends `GET https://icanhazdadjoke.com/` with the header `Accept: application/json`. That header asks for JSON. Without it, the service returns plain text.
+## Concepts demonstrated
 
-A successful body looks like this:
+- **MVVM**: the `JokesView` binds to `JokesViewModel`, which exposes `ChuckNorrisJoke`, the dad joke and `GetJokeCommand`.
+- **Dependency injection**: services, view and view model are registered in `MauiProgram.cs` and constructor-injected.
+- **Interface-based services**: the API, configuration and pop-up logic sit behind interfaces, so they can be swapped or mocked in tests.
+- **Consuming a REST API**: `HttpClient` plus `System.Text.Json`, including a request header for the dad joke API.
+- **Cross-platform targeting**: one project targets Android, iOS, Mac Catalyst and Windows.
 
-```json
-{
-  "id": "RfiGei3E6Ed",
-  "joke": "The joke text is here.",
-  "status": 200
-}
-```
+## Prerequisites
 
-The joke text is the `joke` field. The screen shows `joke`.
+- [.NET 10 SDK](https://dotnet.microsoft.com/download)
+- The .NET MAUI workload: `dotnet workload install maui`
+- Visual Studio 2026 with the ".NET Multi-platform App UI development" workload (recommended on Windows)
+- Platform tooling for whichever target you run (Android SDK/emulator, Xcode on macOS for iOS and Mac Catalyst)
 
-## Build and run
+## Running
 
-You need the .NET 10 SDK and the .NET MAUI workload (`dotnet workload install maui`). Use Visual Studio with the .NET Multi-platform App UI workload, or the command line. You also need the tools for the platform you run (Android SDK, or a Mac for iOS and Mac Catalyst, or Windows for the Windows target).
-
-The project targets Android on every operating system. iOS and Mac Catalyst are included when you are not on Linux. The Windows target is included on Windows.
-
-From this folder:
-
-```bash
-dotnet build ChuckNorrisJokesApp/ChuckNorrisJokesApp.csproj -f net10.0-android
-```
-
-On Windows you can build and run with:
+From Visual Studio, open `ChuckNorrisJokesAppSln.slnx`, pick a target platform and press F5. From the command line:
 
 ```bash
 dotnet build ChuckNorrisJokesApp/ChuckNorrisJokesApp.csproj -f net10.0-windows10.0.19041.0
 dotnet run --project ChuckNorrisJokesApp/ChuckNorrisJokesApp.csproj -f net10.0-windows10.0.19041.0
 ```
 
-Use `-f net10.0-ios` or `-f net10.0-maccatalyst` on a Mac. You can also open `ChuckNorrisJokesAppSln.slnx` in Visual Studio and press F5.
-
-The phone or computer needs a network connection to load jokes.
-
-## What each part does
-
-- **View** (`Views/JokesView.xaml`): shows the title, the two joke labels, red error text under each joke, a loading indicator, and the Get Jokes button. It only binds to the view model. It does not call the APIs or read JSON.
-- **View model** (`ViewModels/JokesViewModel.cs`): holds the Chuck Norris joke, the dad joke, an error message for each, and a loading flag. The button runs `GetJokeCommand`, which asks the two API services for new jokes. While a fetch is in progress the command will not run again, so the button cannot fire a second request. A joke already on screen is replaced only when that request returns a joke. If a request fails, the old joke stays and the error for that joke is shown.
-- **Models** (`Models/ChuckNorrisJoke.cs`, `Models/DadJoke.cs`): match the JSON from each API so the services can deserialize a response.
-- **API services** (`Services/ChuckNorrisApiHttpService.cs`, `Services/DadJokeApiHttpService.cs`): make the HTTP calls and deserialize the JSON. They do not run inside the view or the view model. A failed HTTP status, JSON that cannot be read, or a body with no joke text becomes an error. The URLs live in `Services/ConfigurationService.cs`.
-
-`MauiProgram.cs` registers the services, the view, and the view model.
+Replace the `-f` value with `net10.0-android`, `net10.0-ios` or `net10.0-maccatalyst` for the other targets. iOS and Mac Catalyst require a Mac. An internet connection is needed to fetch jokes.
 
 ## Testing
 
-The API services were called against the live endpoints and against bad responses.
+- **Successful responses**: both APIs returned JSON and the app read `value` and `joke`.
+- **API errors**: a failed or invalid response from one API returned an error for that joke while the other joke still loaded.
+- **No network access**: with the APIs unreachable, each request failed with an error message instead of crashing.
 
-- **Success.** `https://api.chucknorris.io/jokes/random` returned JSON and the service read `value`. `https://icanhazdadjoke.com/` with `Accept: application/json` returned JSON and the service read `joke`.
-- **One API fails, the other works.** A Chuck Norris id that does not exist returned HTTP 404. That call failed with a message, and the dad joke call in the same run still returned a joke. A dad joke id that does not exist came back as HTTP 200 JSON with no `joke` field. That call failed, and the Chuck Norris call still returned a joke. The view model only writes a joke property after a successful call, so the joke that loaded stays on screen.
-- **Invalid or unexpected data.** Plain text and HTML were rejected as invalid JSON. JSON with a blank `value` or `joke`, and JSON with those fields missing, was rejected. HTTP 503 was rejected before the body was treated as a joke.
-- **No network.** Both URLs were pointed at `http://127.0.0.1:9/`, where nothing is listening. Each call failed with a message that the service could not be reached. A joke that had already been stored is left as it is, because the view model does not clear it when the call throws.
+## Known limitations (learning opportunities)
 
-## Layout
+- `HttpClient` is created directly rather than via `IHttpClientFactory`.
+- The API URLs are hard-coded in `ConfigurationService` rather than read from settings.
+- There are no automated tests.
 
-```
-ChuckNorrisJokesAppSln.slnx
-└── ChuckNorrisJokesApp/
-    ├── MauiProgram.cs
-    ├── App.xaml / AppShell.xaml
-    ├── Models/
-    │   ├── ChuckNorrisJoke.cs
-    │   └── DadJoke.cs
-    ├── Services/
-    │   ├── Interfaces/
-    │   ├── ChuckNorrisApiHttpService.cs
-    │   ├── DadJokeApiHttpService.cs
-    │   ├── ConfigurationService.cs
-    │   └── MauiPopupService.cs
-    ├── ViewModels/
-    │   ├── BaseViewModel.cs
-    │   └── JokesViewModel.cs
-    ├── Views/
-    │   └── JokesView.xaml
-    ├── Platforms/
-    └── Resources/
-```
+## Disclaimer
 
-Jokes are loaded from third-party APIs. This project is not affiliated with those APIs.
+This project is provided "as is" for learning and demonstration only. Do not use it in production or rely on it for anything important. Review the terms of the [chucknorris.io](https://api.chucknorris.io) and [icanhazdadjoke](https://icanhazdadjoke.com/api) APIs before using them beyond personal learning.
